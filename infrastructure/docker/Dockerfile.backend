@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM --platform=linux/amd64 node:20-alpine AS builder
+FROM --platform=linux/amd64 node:20-slim AS builder
 
 WORKDIR /app
 
@@ -12,9 +12,9 @@ RUN npm run build
 
 
 # Stage 2: Production
-FROM --platform=linux/amd64 node:20-alpine AS production
+FROM --platform=linux/amd64 node:20-slim AS production
 
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs nodejs
 
 WORKDIR /app
 
