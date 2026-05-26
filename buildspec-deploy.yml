@@ -1,0 +1,45 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: eu-west-3
+    ECS_CLUSTER: ecommerce-production-cluster
+    BACKEND_SERVICE: ecommerce-production-backend-service
+    FRONTEND_SERVICE: ecommerce-production-frontend-service
+
+phases:
+  pre_build:
+    commands:
+      - echo "ECR login..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - ECR_BACKEND=$ECR_REGISTRY/ecommerce-backend
+      - ECR_FRONTEND=$ECR_REGISTRY/ecommerce-frontend
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
+      - echo "Tag $IMAGE_TAG"
+
+  build:
+    commands:
+      - echo "Build backend..."
+      - docker build --platform linux/amd64 -f infrastructure/docker/Dockerfile.backend
+          -t $ECR_BACKEND:$IMAGE_TAG
+          -t $ECR_BACKEND:latest .
+      - echo "Build frontend..."
+      - docker build --platform linux/amd64 -f infrastructure/docker/Dockerfile.frontend
+          -t $ECR_FRONTEND:$IMAGE_TAG
+          -t $ECR_FRONTEND:latest .
+
+  post_build:
+    commands:
+      - echo "Push images..."
+      - docker push $ECR_BACKEND:$IMAGE_TAG
+      - docker push $ECR_BACKEND:latest
+      - docker push $ECR_FRONTEND:$IMAGE_TAG
+      - docker push $ECR_FRONTEND:latest
+      - echo "Deploy to ECS..."
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $BACKEND_SERVICE --force-new-deployment --region $AWS_DEFAULT_REGION
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $FRONTEND_SERVICE --force-new-deployment --region $AWS_DEFAULT_REGION
+      - echo "Waiting for backend stability..."
+      - aws ecs wait services-stable --cluster $ECS_CLUSTER --services $BACKEND_SERVICE --region $AWS_DEFAULT_REGION
+      - echo "Deploy complete ✓"
