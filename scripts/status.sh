@@ -23,41 +23,46 @@ echo ""
 echo -e "${YELLOW}[ AWS — ECS ]${NC}"
 
 # Credentials
-CACHE_FILE=$(ls ~/.aws/login/cache/*.json 2>/dev/null | head -1)
-if [[ -z "$CACHE_FILE" ]]; then
-  fail "Pas de credentials AWS (aws login requis)"
+IAM_CREDS_FILE="/tmp/gh_aws_creds.json"
+if [[ -f "$IAM_CREDS_FILE" ]]; then
+  export AWS_ACCESS_KEY_ID=$(python3 -c "import json; print(json.load(open('$IAM_CREDS_FILE'))['key_id'])")
+  export AWS_SECRET_ACCESS_KEY=$(python3 -c "import json; print(json.load(open('$IAM_CREDS_FILE'))['secret'])")
+  unset AWS_SESSION_TOKEN
 else
-  export AWS_ACCESS_KEY_ID=$(python3 -c "import json; d=json.load(open('$CACHE_FILE')); print(d['accessToken']['accessKeyId'])")
-  export AWS_SECRET_ACCESS_KEY=$(python3 -c "import json; d=json.load(open('$CACHE_FILE')); print(d['accessToken']['secretAccessKey'])")
-  export AWS_SESSION_TOKEN=$(python3 -c "import json; d=json.load(open('$CACHE_FILE')); print(d['accessToken']['sessionToken'])")
-  export AWS_DEFAULT_REGION="eu-west-3"
-
-  CLUSTER="ecommerce-production-cluster"
-
-  # ECS services status
-  for SVC in ecommerce-production-backend-service ecommerce-production-frontend-service; do
-    STATUS=$(aws ecs describe-services \
-      --cluster "$CLUSTER" \
-      --services "$SVC" \
-      --query 'services[0].{status:status,running:runningCount,desired:desiredCount}' \
-      --output json 2>/dev/null || echo '{}')
-    RUNNING=$(echo "$STATUS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('running','?'))" 2>/dev/null)
-    DESIRED=$(echo "$STATUS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('desired','?'))" 2>/dev/null)
-    SVC_SHORT="${SVC##*production-}"
-    [[ "$RUNNING" == "$DESIRED" && "$RUNNING" != "?" ]] \
-      && ok "${SVC_SHORT}: ${RUNNING}/${DESIRED} tâches" \
-      || fail "${SVC_SHORT}: ${RUNNING}/${DESIRED} tâches"
-  done
-
-  # ALB URL
-  ALB=$(aws elbv2 describe-load-balancers \
-    --names "ecommerce-production-alb" \
-    --query 'LoadBalancers[0].DNSName' \
-    --output text 2>/dev/null || echo "")
-  [[ -n "$ALB" && "$ALB" != "None" ]] \
-    && info "URL: http://${ALB}" \
-    || fail "ALB introuvable (terraform apply requis ?)"
+  CACHE_FILE=$(ls ~/.aws/login/cache/*.json 2>/dev/null | head -1)
+  if [[ -n "$CACHE_FILE" ]]; then
+    export AWS_ACCESS_KEY_ID=$(python3 -c "import json; d=json.load(open('$CACHE_FILE')); print(d['accessToken']['accessKeyId'])")
+    export AWS_SECRET_ACCESS_KEY=$(python3 -c "import json; d=json.load(open('$CACHE_FILE')); print(d['accessToken']['secretAccessKey'])")
+    export AWS_SESSION_TOKEN=$(python3 -c "import json; d=json.load(open('$CACHE_FILE')); print(d['accessToken']['sessionToken'])")
+  fi
 fi
+export AWS_DEFAULT_REGION="eu-west-3"
+
+CLUSTER="ecommerce-production-cluster"
+
+# ECS services status
+for SVC in ecommerce-production-backend-service ecommerce-production-frontend-service; do
+  STATUS=$(aws ecs describe-services \
+    --cluster "$CLUSTER" \
+    --services "$SVC" \
+    --query 'services[0].{status:status,running:runningCount,desired:desiredCount}' \
+    --output json 2>/dev/null || echo '{}')
+  RUNNING=$(echo "$STATUS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('running','?'))" 2>/dev/null)
+  DESIRED=$(echo "$STATUS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('desired','?'))" 2>/dev/null)
+  SVC_SHORT="${SVC##*production-}"
+  [[ "$RUNNING" == "$DESIRED" && "$RUNNING" != "?" ]] \
+    && ok "${SVC_SHORT}: ${RUNNING}/${DESIRED} tâches" \
+    || fail "${SVC_SHORT}: ${RUNNING}/${DESIRED} tâches"
+done
+
+# ALB URL
+ALB=$(aws elbv2 describe-load-balancers \
+  --names "ecommerce-production-alb" \
+  --query 'LoadBalancers[0].DNSName' \
+  --output text 2>/dev/null || echo "")
+[[ -n "$ALB" && "$ALB" != "None" ]] \
+  && info "URL: http://${ALB}" \
+  || fail "ALB introuvable (terraform apply requis ?)"
 
 echo ""
 echo -e "${YELLOW}[ CI/CD ]${NC}"
