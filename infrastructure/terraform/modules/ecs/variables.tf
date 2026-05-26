@@ -8,7 +8,22 @@ variable "backend_target_group_arn"  { type = string }
 variable "frontend_target_group_arn" { type = string }
 variable "backend_ecr_uri"           { type = string }
 variable "frontend_ecr_uri"          { type = string }
-variable "database_url"              { type = string; sensitive = true }
-variable "jwt_secret"                { type = string; sensitive = true }
-variable "backend_desired_count"     { type = number; default = 2 }
-variable "frontend_desired_count"    { type = number; default = 2 }
+variable "database_url" {
+  type      = string
+  sensitive = true
+}
+
+variable "jwt_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "backend_desired_count" {
+  type    = number
+  default = 2
+}
+
+variable "frontend_desired_count" {
+  type    = number
+  default = 2
+}
