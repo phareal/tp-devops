@@ -90,13 +90,6 @@ jobs:
           JWT_EXPIRES_IN: 1d
         run: npm test -- --coverage
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          file: src/backend/coverage/lcov.info
-          flags: backend
-          fail_ci_if_error: false
 
   # ─────────────────────────────────────────────
   build-docker:
