@@ -1,0 +1,22 @@
+aws_region   = "eu-west-1"
+project_name = "ecommerce"
+environment  = "production"
+
+# VPC
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["eu-west-1a", "eu-west-1b"]
+public_subnets     = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnets    = ["10.0.10.0/24", "10.0.11.0/24"]
+
+# RDS
+db_name           = "ecommerce_db"
+db_username       = "ecommerce_user"
+db_password       = "CHANGE_ME_STRONG_PASSWORD"
+db_instance_class = "db.t3.micro"
+
+# JWT (generate with: openssl rand -base64 32)
+jwt_secret = "CHANGE_ME_GENERATE_SECURE_SECRET"
+
+# ECS scaling
+backend_desired_count  = 2
+frontend_desired_count = 2
