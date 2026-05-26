@@ -16,11 +16,11 @@ env:
   AWS_REGION: eu-west-3
   ECR_BACKEND_REPO: ecommerce-backend
   ECR_FRONTEND_REPO: ecommerce-frontend
-  ECS_CLUSTER: ecommerce-cluster
-  ECS_SERVICE_BACKEND: ecommerce-backend-service
-  ECS_SERVICE_FRONTEND: ecommerce-frontend-service
-  TASK_DEF_BACKEND: ecommerce-backend-task
-  TASK_DEF_FRONTEND: ecommerce-frontend-task
+  ECS_CLUSTER: ecommerce-production-cluster
+  ECS_SERVICE_BACKEND: ecommerce-production-backend-service
+  ECS_SERVICE_FRONTEND: ecommerce-production-frontend-service
+  TASK_DEF_BACKEND: ecommerce-production-backend
+  TASK_DEF_FRONTEND: ecommerce-production-frontend
 
 jobs:
   # ─────────────────────────────────────────────
