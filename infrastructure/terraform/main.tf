@@ -102,3 +102,22 @@ module "ecs" {
   backend_desired_count      = var.backend_desired_count
   frontend_desired_count     = var.frontend_desired_count
 }
+
+# ─────────────────────────────────────────────
+# CodePipeline (CI/CD via AWS CodeBuild)
+# ─────────────────────────────────────────────
+data "aws_caller_identity" "current" {}
+
+module "codepipeline" {
+  source = "./modules/codepipeline"
+
+  project_name          = var.project_name
+  environment           = var.environment
+  aws_region            = var.aws_region
+  aws_account_id        = data.aws_caller_identity.current.account_id
+  ecr_backend_url       = module.ecr.backend_repository_url
+  ecr_frontend_url      = module.ecr.frontend_repository_url
+  ecs_cluster_name      = module.ecs.cluster_name
+  backend_service_name  = module.ecs.backend_service_name
+  frontend_service_name = module.ecs.frontend_service_name
+}

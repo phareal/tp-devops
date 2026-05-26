@@ -1,0 +1,69 @@
+version: 0.2
+
+env:
+  variables:
+    POSTGRES_DB: ecommerce_test
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing dependencies..."
+      - cd src/backend && npm ci && cd ../..
+
+  pre_build:
+    commands:
+      - echo "Starting PostgreSQL..."
+      - docker run -d --name postgres
+          -e POSTGRES_DB=$POSTGRES_DB
+          -e POSTGRES_USER=$POSTGRES_USER
+          -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          -p 5432:5432
+          postgres:15-alpine
+      - |
+        for i in $(seq 1 15); do
+          docker exec postgres pg_isready -U $POSTGRES_USER && break
+          echo "Waiting for postgres... ($i)"
+          sleep 2
+        done
+      - cd src/backend && npx prisma generate && cd ../..
+      - cd src/backend && DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB npx prisma migrate deploy && cd ../..
+
+  build:
+    commands:
+      - echo "TypeScript check..."
+      - cd src/backend && npx tsc --noEmit && cd ../..
+      - echo "Lint..."
+      - cd src/backend && npm run lint || true && cd ../..
+      - echo "Tests with coverage..."
+      - |
+        cd src/backend && \
+        NODE_ENV=test \
+        DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/$POSTGRES_DB \
+        JWT_SECRET=test-secret-key-minimum-32-characters-long \
+        JWT_EXPIRES_IN=1d \
+        npm test -- --coverage && cd ../..
+      - echo "Security audit..."
+      - cd src/backend && npm audit --audit-level=high || true && cd ../..
+
+  post_build:
+    commands:
+      - echo "CI passed ✓"
+
+reports:
+  coverage:
+    files:
+      - src/backend/coverage/clover.xml
+    file-format: CLOVERXML
+
+artifacts:
+  files:
+    - "**/*"
+  exclude-paths:
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/coverage/**"
+    - "**/.git/**"
