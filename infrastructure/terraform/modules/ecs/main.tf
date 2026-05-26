@@ -19,6 +19,27 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "ssm_secrets" {
+  name = "ssm-secrets-access"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameters", "ssm:GetParameter", "ssm:GetParametersByPath"]
+        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/ecommerce/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # ─── CloudWatch Log Groups ──────────────────────────────────────────────────
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/ecs/${var.project_name}/${var.environment}/backend"
